@@ -1,0 +1,53 @@
+import time
+import os
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import json
+
+WATCH_FOLDER = r"C:\Clips\StreamCaptures"
+LOG_FILE = "posted_clips.json"
+
+if os.path.exists(LOG_FILE):
+    with open(LOG_FILE, "r") as f:
+        posted_clips = json.load(f)
+else:
+    posted_clips = []
+
+class ClipHandler(FileSystemEventHandler):
+    def on_created(self, event):
+        if event.is_directory:
+            return
+
+        filename = os.path.basename(event.src_path)
+
+        if filename.endswith((".mp4", ".mov")):
+            if filename not in posted_clips:
+                print(f"[NEW CLIP] {filename}")
+                time.sleep(2)
+                self.handle_new_clip(event.src_path, filename)
+            else:
+                print(f"[SKIPPED] Already posted: {filename}")
+
+    def handle_new_clip(self, full_path, filename):
+        # Placeholder action — replace with upload logic
+        print(f"Processing: {filename}")
+
+        posted_clips.append(filename)
+        with open(LOG_FILE, "w") as f:
+            json.dump(posted_clips, f)
+
+        print(f"[✅] Marked as posted: {filename}")
+
+if __name__ == "__main__":
+    print(f"👀 Watching folder: {WATCH_FOLDER}")
+    event_handler = ClipHandler()
+    observer = Observer()
+    observer.schedule(event_handler, path=WATCH_FOLDER, recursive=False)
+    observer.start()
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
